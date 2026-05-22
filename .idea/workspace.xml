@@ -4,14 +4,39 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="5f5a7f12-75f4-42d2-b43a-10b77abb990b" name="Changes" comment="" />
+    <list default="true" id="5f5a7f12-75f4-42d2-b43a-10b77abb990b" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/node_modules/.vite/deps/@radix-ui_react-dropdown-menu.js" beforeDir="false" afterPath="$PROJECT_DIR$/node_modules/.vite/deps/@radix-ui_react-dropdown-menu.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/node_modules/.vite/deps/@radix-ui_react-dropdown-menu.js.map" beforeDir="false" afterPath="$PROJECT_DIR$/node_modules/.vite/deps/@radix-ui_react-dropdown-menu.js.map" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/node_modules/.vite/deps/@radix-ui_react-label.js" beforeDir="false" afterPath="$PROJECT_DIR$/node_modules/.vite/deps/@radix-ui_react-label.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/node_modules/.vite/deps/@radix-ui_react-progress.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/node_modules/.vite/deps/@radix-ui_react-progress.js.map" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/node_modules/.vite/deps/@radix-ui_react-select.js" beforeDir="false" afterPath="$PROJECT_DIR$/node_modules/.vite/deps/@radix-ui_react-select.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/node_modules/.vite/deps/@radix-ui_react-select.js.map" beforeDir="false" afterPath="$PROJECT_DIR$/node_modules/.vite/deps/@radix-ui_react-select.js.map" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/node_modules/.vite/deps/@radix-ui_react-separator.js" beforeDir="false" afterPath="$PROJECT_DIR$/node_modules/.vite/deps/@radix-ui_react-separator.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/node_modules/.vite/deps/@radix-ui_react-tabs.js" beforeDir="false" afterPath="$PROJECT_DIR$/node_modules/.vite/deps/@radix-ui_react-tabs.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/node_modules/.vite/deps/@radix-ui_react-tabs.js.map" beforeDir="false" afterPath="$PROJECT_DIR$/node_modules/.vite/deps/@radix-ui_react-tabs.js.map" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/node_modules/.vite/deps/_metadata.json" beforeDir="false" afterPath="$PROJECT_DIR$/node_modules/.vite/deps/_metadata.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/node_modules/.vite/deps/chunk-4E5Z2HTF.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/node_modules/.vite/deps/chunk-4E5Z2HTF.js.map" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/node_modules/.vite/deps/chunk-6MGFY25Z.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/node_modules/.vite/deps/chunk-6MGFY25Z.js.map" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/node_modules/.vite/deps/chunk-72EZ5JS4.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/node_modules/.vite/deps/chunk-72EZ5JS4.js.map" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/node_modules/.vite/deps/chunk-7JUXSKTE.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/node_modules/.vite/deps/chunk-7JUXSKTE.js.map" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/node_modules/.vite/deps/chunk-E2IRXUXI.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/node_modules/.vite/deps/chunk-E2IRXUXI.js.map" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/node_modules/.vite/deps/recharts.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/node_modules/.vite/deps/recharts.js.map" beforeDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
     <option name="LAST_RESOLUTION" value="IGNORE" />
   </component>
   <component name="EmbeddingIndexingInfo">
-    <option name="cachedIndexableFilesCount" value="2038" />
+    <option name="cachedIndexableFilesCount" value="91" />
   </component>
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
