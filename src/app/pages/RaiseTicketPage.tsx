@@ -12,7 +12,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../components/ui/select";
-import { Ticket, Upload, ArrowLeft, CheckCircle, Sparkles } from "lucide-react";
+import { Upload, ArrowLeft, CheckCircle, Sparkles } from "lucide-react";
+import logoImage from "../../../Logo/Logo.png";
 
 const issueTypes = [
   "Laptop Issue",
@@ -38,7 +39,7 @@ const departments = [
 ];
 
 const inputClassName =
-  "border-slate-300 bg-white text-slate-950 placeholder:text-slate-400 focus-visible:ring-[#3ecf8e]/40";
+  "border-slate-300 bg-white text-slate-950 placeholder:text-slate-400 focus-visible:ring-[#38bdf8]/40";
 
 export function RaiseTicketPage() {
   const [submitted, setSubmitted] = useState(false);
@@ -64,7 +65,7 @@ export function RaiseTicketPage() {
         <div className="mx-auto flex max-w-xl items-center justify-center pt-12">
           <Card className="w-full border-slate-200 bg-white shadow-[0_24px_80px_rgba(15,23,42,0.08)]">
             <CardContent className="p-12 text-center">
-              <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-[#3ecf8e]/15 text-[#16a34a]">
+              <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-[#38bdf8]/15 text-[#0284c7]">
                 <CheckCircle className="h-10 w-10" />
               </div>
               <h2 className="mb-3 text-3xl font-semibold tracking-tight text-slate-950">
@@ -73,7 +74,7 @@ export function RaiseTicketPage() {
               <p className="mb-3 text-slate-600">
                 Your request has been created successfully in Levista SmartDesk.
               </p>
-              <div className="mb-6 inline-flex items-center gap-2 rounded-lg border border-[#3ecf8e]/30 bg-[#3ecf8e]/10 px-4 py-2">
+              <div className="mb-6 inline-flex items-center gap-2 rounded-lg border border-[#38bdf8]/30 bg-[#38bdf8]/10 px-4 py-2">
                 <span className="text-sm font-mono font-medium text-slate-900">
                   Ticket ID: LIT-009
                 </span>
@@ -84,7 +85,7 @@ export function RaiseTicketPage() {
               <div className="space-y-3">
                 <Button
                   onClick={() => setSubmitted(false)}
-                  className="w-full bg-[#3ecf8e] text-slate-950 hover:bg-[#2fbe7d]"
+                  className="w-full bg-[#38bdf8] text-slate-950 hover:bg-[#0ea5e9]"
                 >
                   Submit another ticket
                 </Button>
@@ -109,7 +110,7 @@ export function RaiseTicketPage() {
       <div className="mx-auto max-w-5xl">
         <Link
           to="/"
-          className="mb-6 inline-flex items-center gap-2 text-sm text-[#15803d] transition-colors hover:text-[#166534]"
+          className="mb-6 inline-flex items-center gap-2 text-sm text-[#0284c7] transition-colors hover:text-[#0369a1]"
         >
           <ArrowLeft className="h-4 w-4" />
           Back to home
@@ -117,11 +118,11 @@ export function RaiseTicketPage() {
 
         <div className="mb-10 grid gap-6 lg:grid-cols-[1fr_1.4fr]">
           <div className="rounded-[28px] border border-slate-200 bg-white p-8 shadow-[0_24px_80px_rgba(15,23,42,0.06)]">
-            <div className="mb-6 flex h-14 w-14 items-center justify-center rounded-2xl bg-[#3ecf8e]/15 text-[#16a34a]">
-              <Ticket className="h-7 w-7" />
+            <div className="mb-6 flex h-14 w-14 items-center justify-center overflow-hidden rounded-2xl bg-[#38bdf8]/10">
+              <img src={logoImage} alt="Levista logo" className="h-10 w-10 object-contain" />
             </div>
             <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-sm text-slate-600">
-              <Sparkles className="h-4 w-4 text-[#16a34a]" />
+              <Sparkles className="h-4 w-4 text-[#0284c7]" />
               Levista SmartDesk
             </div>
             <h1 className="text-4xl font-semibold tracking-[-0.03em] text-slate-950">
@@ -317,7 +318,7 @@ export function RaiseTicketPage() {
                 <div className="flex flex-col gap-4 pt-4 sm:flex-row">
                   <Button
                     type="submit"
-                    className="flex-1 bg-[#3ecf8e] text-slate-950 hover:bg-[#2fbe7d]"
+                    className="flex-1 bg-[#38bdf8] text-slate-950 hover:bg-[#0ea5e9]"
                   >
                     Submit ticket
                   </Button>

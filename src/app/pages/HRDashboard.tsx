@@ -21,7 +21,6 @@ import {
   TableHeader,
   TableRow,
 } from "../components/ui/table";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
 import { Textarea } from "../components/ui/textarea";
 import {
   createHrRequest,
@@ -36,7 +35,7 @@ import {
 
 const surfaceClass = "border-slate-200 bg-white shadow-[0_20px_60px_rgba(15,23,42,0.06)]";
 const inputClassName =
-  "border-slate-300 bg-white text-slate-950 placeholder:text-slate-400 focus-visible:ring-[#3ecf8e]/40";
+  "border-slate-300 bg-white text-slate-950 placeholder:text-slate-400 focus-visible:ring-[#38bdf8]/40";
 
 const locationOptions: HrLocation[] = ["Bangalore", "Kushal Nagar", "Warehouse"];
 const assignOptions: HrAssignRequirement[] = ["E-mail Creation", "Laptop Allocation"];
@@ -57,14 +56,13 @@ const initialFormState = {
 const statusClasses = {
   pending: "border-0 bg-amber-100 text-amber-700",
   in_progress: "border-0 bg-blue-100 text-blue-700",
-  completed: "border-0 bg-green-100 text-green-700",
+  completed: "border-0 bg-sky-100 text-sky-700",
 };
 
 export function HRDashboard() {
   const location = useLocation();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const [activeTab, setActiveTab] = useState("select-query");
   const [queryType, setQueryType] = useState<HrQueryType>("new_employee");
   const [requests, setRequests] = useState<HrRequest[]>([]);
   const [selectedRequestId, setSelectedRequestId] = useState<string | null>(null);
@@ -73,6 +71,7 @@ export function HRDashboard() {
   const [error, setError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
   const [formData, setFormData] = useState(initialFormState);
+  const isViewStatusPage = searchParams.get("tab") === "view-status";
 
   const loadRequests = async () => {
     setLoading(true);
@@ -91,14 +90,6 @@ export function HRDashboard() {
   useEffect(() => {
     void loadRequests();
   }, []);
-
-  useEffect(() => {
-    if (searchParams.get("tab") === "view-status") {
-      setActiveTab("request-table");
-    } else {
-      setActiveTab("select-query");
-    }
-  }, [location.pathname, searchParams]);
 
   const selectedRequest = useMemo(
     () => requests.find((request) => request.id === selectedRequestId) ?? null,
@@ -166,7 +157,7 @@ export function HRDashboard() {
       setFormData(initialFormState);
       setSuccessMessage("New employee request submitted successfully.");
       await loadRequests();
-      setActiveTab("request-table");
+      navigate("/hr?tab=view-status");
     } catch (submitError) {
       setError(submitError instanceof Error ? submitError.message : "Failed to submit request.");
     } finally {
@@ -174,39 +165,33 @@ export function HRDashboard() {
     }
   };
 
-  const handleTabChange = (value: string) => {
-    setActiveTab(value);
-    navigate(value === "request-table" ? "/hr?tab=view-status" : "/hr");
-  };
-
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="mb-2 text-3xl font-semibold text-slate-950">HR Dashboard</h1>
+        <h1 className="mb-2 text-3xl font-semibold text-slate-950">
+          {isViewStatusPage ? "HR Request Status" : "HR Dashboard"}
+        </h1>
         <p className="text-slate-600">
-          Raise and track employee onboarding requests for admin follow-up.
+          {isViewStatusPage
+            ? "Track employee onboarding requests and admin progress updates."
+            : "Raise employee onboarding requests for admin follow-up."}
         </p>
       </div>
 
       <Card className={surfaceClass}>
         <CardHeader>
-          <CardTitle className="text-slate-950">New Employee Request Module</CardTitle>
+          <CardTitle className="text-slate-950">
+            {isViewStatusPage ? "View Status" : "New Employee Request Module"}
+          </CardTitle>
           <CardDescription className="text-slate-600">
-            Select a query, submit the request, and track the status from HR.
+            {isViewStatusPage
+              ? "Review submitted requests and check the latest admin updates."
+              : "Select a query and submit the request from HR."}
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Tabs value={activeTab} onValueChange={handleTabChange} className="gap-6">
-            <TabsList className="grid w-full max-w-xl grid-cols-2 bg-slate-100">
-              <TabsTrigger value="select-query" className="data-[state=active]:bg-white">
-                Select Query
-              </TabsTrigger>
-              <TabsTrigger value="request-table" className="data-[state=active]:bg-white">
-                Submitted Requests
-              </TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="select-query" className="space-y-6">
+          {!isViewStatusPage ? (
+            <div className="space-y-6">
               <div className="grid gap-4 md:grid-cols-[260px_1fr]">
                 <div className="space-y-2">
                   <Label className="text-slate-900">Select Query</Label>
@@ -353,7 +338,7 @@ export function HRDashboard() {
                               type="checkbox"
                               checked={formData.assign_requirements.includes(option)}
                               onChange={() => handleAssignmentToggle(option)}
-                              className="h-4 w-4 rounded border-slate-300 text-[#16a34a] accent-[#16a34a]"
+                              className="h-4 w-4 rounded border-slate-300 text-[#0284c7] accent-[#0ea5e9]"
                             />
                             <span>{option}</span>
                           </label>
@@ -385,7 +370,7 @@ export function HRDashboard() {
                   ) : null}
 
                   {successMessage ? (
-                    <div className="rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
+                    <div className="rounded-lg border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-700">
                       {successMessage}
                     </div>
                   ) : null}
@@ -393,15 +378,15 @@ export function HRDashboard() {
                   <Button
                     type="submit"
                     disabled={submitting}
-                    className="bg-[#3ecf8e] text-slate-950 hover:bg-[#2fbe7d]"
+                    className="bg-[#38bdf8] text-slate-950 hover:bg-[#0ea5e9]"
                   >
                     {submitting ? "Submitting..." : "Submit"}
                   </Button>
                 </form>
               )}
-            </TabsContent>
-
-            <TabsContent value="request-table" className="space-y-6">
+            </div>
+          ) : (
+            <div className="space-y-6">
               <div className="overflow-hidden rounded-lg border border-slate-200">
                 <Table>
                   <TableHeader>
@@ -504,44 +489,8 @@ export function HRDashboard() {
                   </CardContent>
                 </Card>
               ) : null}
-            </TabsContent>
-          </Tabs>
-        </CardContent>
-      </Card>
-
-      <Card className={surfaceClass}>
-        <CardHeader>
-          <CardTitle className="text-slate-950">Suggested Status Flow</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="overflow-hidden rounded-lg border border-slate-200">
-            <Table>
-              <TableHeader>
-                <TableRow className="border-slate-200 bg-slate-50 hover:bg-slate-50">
-                  <TableHead className="text-slate-600">HR Action</TableHead>
-                  <TableHead className="text-slate-600">Admin Action</TableHead>
-                  <TableHead className="text-slate-600">Final Status</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                <TableRow className="border-slate-200 hover:bg-slate-50">
-                  <TableCell>New Request Submitted</TableCell>
-                  <TableCell>Email &amp; Laptop Assigned</TableCell>
-                  <TableCell>Completed</TableCell>
-                </TableRow>
-                <TableRow className="border-slate-200 hover:bg-slate-50">
-                  <TableCell>Request Submitted</TableCell>
-                  <TableCell>Pending Approval</TableCell>
-                  <TableCell>Pending</TableCell>
-                </TableRow>
-                <TableRow className="border-slate-200 hover:bg-slate-50">
-                  <TableCell>Processing Started</TableCell>
-                  <TableCell>IT Team Working</TableCell>
-                  <TableCell>In Progress</TableCell>
-                </TableRow>
-              </TableBody>
-            </Table>
-          </div>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

@@ -1,12 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { format } from "date-fns";
 import {
-  Archive,
-  CheckCircle,
-  Clock,
   Laptop,
   Mail,
-  Ticket,
   Users,
 } from "lucide-react";
 import { Badge } from "../components/ui/badge";
@@ -40,19 +36,12 @@ import {
 
 const surfaceClass = "border-slate-200 bg-white shadow-[0_20px_60px_rgba(15,23,42,0.06)]";
 const inputClassName =
-  "border-slate-300 bg-white text-slate-950 placeholder:text-slate-400 focus-visible:ring-[#3ecf8e]/40";
-
-const kpiData = [
-  { title: "Total Tickets", value: "1,245", icon: Ticket, color: "from-blue-400 to-blue-600" },
-  { title: "Pending", value: "147", icon: Clock, color: "from-yellow-400 to-yellow-600" },
-  { title: "Completed", value: "892", icon: CheckCircle, color: "from-green-400 to-green-600" },
-  { title: "Closed", value: "148", icon: Archive, color: "from-purple-400 to-purple-600" },
-];
+  "border-slate-300 bg-white text-slate-950 placeholder:text-slate-400 focus-visible:ring-[#38bdf8]/40";
 
 const statusClasses = {
   pending: "border-0 bg-amber-100 text-amber-700",
   in_progress: "border-0 bg-blue-100 text-blue-700",
-  completed: "border-0 bg-green-100 text-green-700",
+  completed: "border-0 bg-sky-100 text-sky-700",
 };
 
 export function AdminDashboard() {
@@ -147,24 +136,6 @@ export function AdminDashboard() {
         <p className="text-slate-600">
           Review HR onboarding requests and update e-mail, laptop allocation, and status.
         </p>
-      </div>
-
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-4">
-        {kpiData.map((kpi) => (
-          <Card key={kpi.title} className={surfaceClass}>
-            <CardContent className="p-6">
-              <div className="flex items-start justify-between">
-                <div>
-                  <p className="mb-2 text-sm text-slate-500">{kpi.title}</p>
-                  <h3 className="text-3xl font-bold text-slate-950">{kpi.value}</h3>
-                </div>
-                <div className={`flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br ${kpi.color}`}>
-                  <kpi.icon className="h-6 w-6 text-white" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
       </div>
 
       <Card className={surfaceClass}>
@@ -345,14 +316,14 @@ export function AdminDashboard() {
                       </div>
                     ) : null}
                     {successMessage ? (
-                      <div className="rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
+                      <div className="rounded-lg border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-700">
                         {successMessage}
                       </div>
                     ) : null}
                     <Button
                       type="submit"
                       disabled={saving}
-                      className="w-full bg-[#3ecf8e] text-slate-950 hover:bg-[#2fbe7d]"
+                      className="w-full bg-[#38bdf8] text-slate-950 hover:bg-[#0ea5e9]"
                     >
                       {saving ? "Saving..." : "Save Update"}
                     </Button>
@@ -367,7 +338,7 @@ export function AdminDashboard() {
       <Card className={surfaceClass}>
         <CardContent className="grid gap-4 p-6 md:grid-cols-3">
           <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-            <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-[#3ecf8e]/15 text-[#15803d]">
+            <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-[#38bdf8]/15 text-[#0284c7]">
               <Mail className="h-5 w-5" />
             </div>
             <p className="font-medium text-slate-950">Official E-mail</p>
@@ -376,7 +347,7 @@ export function AdminDashboard() {
             </p>
           </div>
           <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-            <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-[#3ecf8e]/15 text-[#15803d]">
+            <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-[#38bdf8]/15 text-[#0284c7]">
               <Laptop className="h-5 w-5" />
             </div>
             <p className="font-medium text-slate-950">Laptop Allocation</p>
@@ -385,7 +356,7 @@ export function AdminDashboard() {
             </p>
           </div>
           <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-            <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-[#3ecf8e]/15 text-[#15803d]">
+            <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-[#38bdf8]/15 text-[#0284c7]">
               <Users className="h-5 w-5" />
             </div>
             <p className="font-medium text-slate-950">Shared Tracking</p>

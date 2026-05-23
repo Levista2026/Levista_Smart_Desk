@@ -4,6 +4,7 @@ import {
   LayoutDashboard,
   Ticket,
   Users,
+  Package,
   FileText,
   Settings,
   Bell,
@@ -13,9 +14,9 @@ import {
   ChevronDown,
   Eye,
 } from "lucide-react";
+import logoImage from "../../../Logo/Logo.png";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
-import { Badge } from "../components/ui/badge";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -30,13 +31,13 @@ interface NavItem {
   icon: React.ElementType;
   label: string;
   path: string;
-  badge?: number;
 }
 
 const adminNavItems: NavItem[] = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/admin" },
-  { icon: Ticket, label: "Tickets", path: "/admin/tickets", badge: 12 },
+  { icon: Ticket, label: "Tickets", path: "/admin/tickets" },
   { icon: Users, label: "Employees", path: "/admin/employees" },
+  { icon: Package, label: "Inventory", path: "/admin/inventory" },
   { icon: FileText, label: "Reports", path: "/admin/reports" },
   { icon: Settings, label: "Settings", path: "/admin/settings" },
 ];
@@ -54,16 +55,29 @@ export function DashboardLayout() {
   const [currentUserDesignation, setCurrentUserDesignation] = useState("Portal Access");
   const isAdmin = location.pathname.startsWith("/admin");
   const navItems = isAdmin ? adminNavItems : hrNavItems;
-  const userRole = isAdmin ? "admin" : "hr";
+  const notifications = isAdmin
+    ? [
+        "New HR onboarding request submitted",
+        "3 employee tickets need review",
+        "1 laptop allocation is pending update",
+      ]
+    : [
+        "Admin updated one onboarding request",
+        "2 requests are waiting for admin review",
+        "Status changed on one submitted employee request",
+      ];
 
   useEffect(() => {
-    const storedRole = getStoredRole();
-    const storedUser = getStoredUser();
+    const syncStoredUser = () => {
+      const storedUser = getStoredUser();
+      if (storedUser) {
+        setCurrentUserName(storedUser.name);
+        setCurrentUserDesignation(storedUser.designation);
+      }
+    };
 
-    if (storedUser) {
-      setCurrentUserName(storedUser.name);
-      setCurrentUserDesignation(storedUser.designation);
-    }
+    const storedRole = getStoredRole();
+    syncStoredUser();
 
     if (!storedRole) {
       navigate("/login", { replace: true });
@@ -78,6 +92,9 @@ export function DashboardLayout() {
     if (!isAdmin && storedRole !== "hr") {
       navigate("/login", { replace: true });
     }
+
+    window.addEventListener("levista-user-updated", syncStoredUser);
+    return () => window.removeEventListener("levista-user-updated", syncStoredUser);
   }, [isAdmin, navigate]);
 
   const handleLogout = () => {
@@ -96,8 +113,8 @@ export function DashboardLayout() {
         <div className="flex h-full flex-col border-r border-slate-200 bg-white">
           {/* Logo */}
           <div className="flex h-16 items-center gap-3 border-b border-slate-200 px-6">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#3ecf8e]/15 text-[#16a34a]">
-              <Ticket className="h-6 w-6" />
+            <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-lg bg-[#38bdf8]/10">
+              <img src={logoImage} alt="Levista logo" className="h-8 w-8 object-contain" />
             </div>
             <div>
               <h1 className="text-lg font-semibold text-slate-950">Levista SmartDesk</h1>
@@ -117,17 +134,12 @@ export function DashboardLayout() {
                   onClick={() => setSidebarOpen(false)}
                   className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${
                     isActive
-                      ? "bg-[#3ecf8e]/15 text-slate-950 shadow-sm"
+                      ? "bg-[#38bdf8]/15 text-slate-950 shadow-sm"
                       : "text-slate-600 hover:bg-slate-100 hover:text-slate-950"
                   }`}
                 >
                   <item.icon className="h-5 w-5 flex-shrink-0" />
                   <span className="flex-1">{item.label}</span>
-                  {item.badge && (
-                    <Badge className="border-0 bg-[#3ecf8e] text-slate-950">
-                      {item.badge}
-                    </Badge>
-                  )}
                 </Link>
               );
             })}
@@ -138,7 +150,7 @@ export function DashboardLayout() {
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button className="flex w-full items-center gap-3 rounded-lg px-4 py-3 transition-colors hover:bg-slate-100">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#3ecf8e]/15 font-semibold text-[#15803d]">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#38bdf8]/15 font-semibold text-[#0284c7]">
                     {currentUserName[0] ?? "U"}
                   </div>
                   <div className="flex-1 text-left">
@@ -151,7 +163,9 @@ export function DashboardLayout() {
               <DropdownMenuContent align="end" className="w-56">
                 <DropdownMenuLabel>My Account</DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem>Profile Settings</DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => navigate(`${isAdmin ? "/admin" : "/hr"}/settings`)}>
+                  Profile Settings
+                </DropdownMenuItem>
                 <DropdownMenuItem>Notifications</DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem className="text-red-600" onSelect={handleLogout}>
@@ -195,14 +209,27 @@ export function DashboardLayout() {
             </div>
           </div>
 
-          <Button
-            variant="ghost"
-            size="icon"
-            className="relative text-slate-700 hover:bg-slate-100"
-          >
-            <Bell className="h-5 w-5" />
-            <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-[#22c55e]" />
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="relative text-slate-700 hover:bg-slate-100"
+              >
+                <Bell className="h-5 w-5" />
+                <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-[#38bdf8]" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-80">
+              <DropdownMenuLabel>Notifications</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              {notifications.map((notification) => (
+                <DropdownMenuItem key={notification} className="py-3 whitespace-normal">
+                  {notification}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
         </header>
 
         {/* Page Content */}

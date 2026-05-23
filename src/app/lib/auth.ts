@@ -149,6 +149,79 @@ export function setStoredUser(user: AuthUser) {
   }
 
   window.localStorage.setItem(AUTH_USER_KEY, JSON.stringify(user));
+  window.dispatchEvent(new Event("levista-user-updated"));
+}
+
+export async function updateStoredUserProfile(input: {
+  name: string;
+  email: string;
+  designation: string;
+}) {
+  if (!hasSupabaseConfig()) {
+    throw new Error("Supabase configuration is missing.");
+  }
+
+  const currentUser = getStoredUser();
+  if (!currentUser) {
+    throw new Error("No logged-in user found.");
+  }
+
+  const trimmedName = input.name.trim();
+  const trimmedEmail = input.email.trim().toLowerCase();
+  const trimmedDesignation = input.designation.trim();
+
+  if (!trimmedName || !trimmedEmail || !trimmedDesignation) {
+    throw new Error("Name, email, and designation are all required.");
+  }
+
+  const userAccessResponse = await fetch(
+    `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/user_access?id=eq.${currentUser.id}`,
+    {
+      method: "PATCH",
+      headers: {
+        ...getHeaders(),
+        Prefer: "return=representation",
+      },
+      body: JSON.stringify({
+        name: trimmedName,
+        email: trimmedEmail,
+        Deisgnation: trimmedDesignation,
+      }),
+    },
+  );
+
+  if (!userAccessResponse.ok) {
+    throw new Error("Failed to update profile in user_access.");
+  }
+
+  if (currentUser.accessToken) {
+    const authUpdateResponse = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/auth/v1/user`, {
+      method: "PUT",
+      headers: {
+        apikey: getApiKey(),
+        Authorization: `Bearer ${currentUser.accessToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        email: trimmedEmail,
+        data: {
+          name: trimmedName,
+          designation: trimmedDesignation,
+        },
+      }),
+    });
+
+    if (!authUpdateResponse.ok) {
+      throw new Error("Profile updated in user_access, but failed to update Supabase Auth email.");
+    }
+  }
+
+  const [updatedRow] = (await userAccessResponse.json()) as UserAccessRow[];
+  const updatedUser = mapAccessRow(updatedRow);
+  updatedUser.accessToken = currentUser.accessToken;
+  updatedUser.refreshToken = currentUser.refreshToken;
+  setStoredUser(updatedUser);
+  return updatedUser;
 }
 
 export function clearStoredRole() {

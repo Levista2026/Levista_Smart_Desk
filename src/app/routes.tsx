@@ -7,6 +7,7 @@ import { AdminDashboard } from "./pages/AdminDashboard";
 import { HRDashboard } from "./pages/HRDashboard";
 import { TicketsPage } from "./pages/TicketsPage";
 import { EmployeesPage } from "./pages/EmployeesPage";
+import { InventoryPage } from "./pages/InventoryPage";
 import { ReportsPage } from "./pages/ReportsPage";
 import { SettingsPage } from "./pages/SettingsPage";
 import { RaiseTicketPage } from "./pages/RaiseTicketPage";
@@ -28,6 +29,7 @@ export const router = createBrowserRouter([
           { path: "tickets", Component: TicketsPage },
           { path: "tickets/:id", Component: TicketDetailPage },
           { path: "employees", Component: EmployeesPage },
+          { path: "inventory", Component: InventoryPage },
           { path: "reports", Component: ReportsPage },
           { path: "settings", Component: SettingsPage },
         ],

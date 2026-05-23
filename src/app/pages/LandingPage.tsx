@@ -1,18 +1,17 @@
 import { Link } from "react-router";
 import { Button } from "../components/ui/button";
-import { ArrowRight, ChevronDown, Headphones, Ticket } from "lucide-react";
-
-const navItems = ["Staff Support", "Admin Desk", "HR Desk", "Resources"];
+import { ArrowRight, Headphones } from "lucide-react";
+import logoImage from "../../../Logo/Logo.png";
 
 export function LandingPage() {
   return (
     <div className="min-h-screen bg-[#f8faf8] text-slate-900">
       <header className="sticky top-0 z-20 border-b border-slate-200/80 bg-white/90 backdrop-blur">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4 lg:px-8">
-          <div className="flex items-center gap-12">
+          <div className="flex items-center">
             <Link to="/" className="flex items-center gap-3">
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#3ecf8e]/15 text-[#22c55e]">
-                <Ticket className="h-5 w-5" />
+              <div className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-xl bg-[#38bdf8]/10">
+                <img src={logoImage} alt="Levista logo" className="h-7 w-7 object-contain" />
               </div>
               <div>
                 <p className="text-lg font-semibold tracking-tight text-slate-950">
@@ -21,19 +20,6 @@ export function LandingPage() {
                 <p className="text-xs text-slate-500">Internal support portal</p>
               </div>
             </Link>
-
-            <nav className="hidden items-center gap-7 lg:flex">
-              {navItems.map((item) => (
-                <button
-                  key={item}
-                  type="button"
-                  className="inline-flex items-center gap-1 text-sm text-slate-600 transition-colors hover:text-slate-950"
-                >
-                  {item}
-                  <ChevronDown className="h-4 w-4" />
-                </button>
-              ))}
-            </nav>
           </div>
 
           <div className="flex items-center gap-3">
@@ -46,7 +32,7 @@ export function LandingPage() {
               </Button>
             </Link>
             <Link to="/raise-ticket">
-              <Button className="bg-[#3ecf8e] text-slate-950 shadow-none hover:bg-[#2fbe7d]">
+              <Button className="bg-[#38bdf8] text-slate-950 shadow-none hover:bg-[#0ea5e9]">
                 Raise a ticket
               </Button>
             </Link>
@@ -56,17 +42,17 @@ export function LandingPage() {
 
       <main>
         <section className="relative overflow-hidden">
-          <div className="absolute inset-x-0 top-0 h-72 bg-[radial-gradient(circle_at_top,_rgba(62,207,142,0.16),_transparent_55%)]" />
+          <div className="absolute inset-x-0 top-0 h-72 bg-[radial-gradient(circle_at_top,_rgba(56,189,248,0.16),_transparent_55%)]" />
           <div className="mx-auto flex max-w-7xl flex-col items-center px-6 pb-24 pt-20 text-center lg:px-8 lg:pb-32 lg:pt-28">
             <div className="mb-8 inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm text-slate-600 shadow-sm">
-              <Headphones className="h-4 w-4 text-[#22c55e]" />
+              <Headphones className="h-4 w-4 text-[#0ea5e9]" />
               <span>Built only for Levista teams</span>
               <ArrowRight className="h-4 w-4" />
             </div>
 
             <h1 className="max-w-4xl text-5xl font-semibold tracking-[-0.04em] text-slate-950 md:text-7xl">
               One desk for staff,
-              <span className="block text-[#3ecf8e]">admin, and HR support</span>
+              <span className="block text-[#38bdf8]">admin, and HR support</span>
             </h1>
 
             <p className="mt-8 max-w-3xl text-lg leading-8 text-slate-600 md:text-xl">
@@ -79,7 +65,7 @@ export function LandingPage() {
               <Link to="/raise-ticket">
                 <Button
                   size="lg"
-                  className="h-12 rounded-lg bg-[#3ecf8e] px-7 text-slate-950 hover:bg-[#2fbe7d]"
+                  className="h-12 rounded-lg bg-[#38bdf8] px-7 text-slate-950 hover:bg-[#0ea5e9]"
                 >
                   Start a request
                 </Button>

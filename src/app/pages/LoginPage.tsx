@@ -77,14 +77,14 @@ export function LoginPage() {
                 }}
               >
                 <CardContent className="p-6 text-center sm:p-8">
-                  <div className="mx-auto mb-5 flex h-[4.5rem] w-[4.5rem] items-center justify-center rounded-2xl bg-[#3ecf8e]/15 text-[#16a34a] transition-transform group-hover:scale-110 sm:h-20 sm:w-20">
+                  <div className="mx-auto mb-5 flex h-[4.5rem] w-[4.5rem] items-center justify-center rounded-2xl bg-[#38bdf8]/15 text-[#0284c7] transition-transform group-hover:scale-110 sm:h-20 sm:w-20">
                     <ShieldCheck className="h-9 w-9 sm:h-10 sm:w-10" />
                   </div>
                   <h3 className="mb-2 text-2xl font-bold text-slate-950">Admin Portal</h3>
                   <p className="mb-6 text-slate-600">
                     Full system access, analytics, and user management
                   </p>
-                  <Button className="w-full bg-[#3ecf8e] text-slate-950 hover:bg-[#2fbe7d]">
+                  <Button className="w-full bg-[#38bdf8] text-slate-950 hover:bg-[#0ea5e9]">
                     Login as Admin
                   </Button>
                 </CardContent>
@@ -98,14 +98,14 @@ export function LoginPage() {
                 }}
               >
                 <CardContent className="p-6 text-center sm:p-8">
-                  <div className="mx-auto mb-5 flex h-[4.5rem] w-[4.5rem] items-center justify-center rounded-2xl bg-[#3ecf8e]/15 text-[#16a34a] transition-transform group-hover:scale-110 sm:h-20 sm:w-20">
+                  <div className="mx-auto mb-5 flex h-[4.5rem] w-[4.5rem] items-center justify-center rounded-2xl bg-[#38bdf8]/15 text-[#0284c7] transition-transform group-hover:scale-110 sm:h-20 sm:w-20">
                     <Users className="h-9 w-9 sm:h-10 sm:w-10" />
                   </div>
                   <h3 className="mb-2 text-2xl font-bold text-slate-950">HR Portal</h3>
                   <p className="mb-6 text-slate-600">
                     Employee requests, onboarding, and approvals
                   </p>
-                  <Button className="w-full bg-[#3ecf8e] text-slate-950 hover:bg-[#2fbe7d]">
+                  <Button className="w-full bg-[#38bdf8] text-slate-950 hover:bg-[#0ea5e9]">
                     Login as HR
                   </Button>
                 </CardContent>
@@ -162,14 +162,14 @@ export function LoginPage() {
                     <input type="checkbox" className="rounded" />
                     Remember me
                   </label>
-                  <a href="#" className="text-[#16a34a] hover:text-[#15803d]">
+                  <a href="#" className="text-[#0284c7] hover:text-[#0369a1]">
                     Forgot password?
                   </a>
                 </div>
                 <Button
                   type="submit"
                   disabled={loading}
-                  className="w-full bg-[#3ecf8e] text-slate-950 hover:bg-[#2fbe7d]"
+                  className="w-full bg-[#38bdf8] text-slate-950 hover:bg-[#0ea5e9]"
                 >
                   {loading ? "Signing in..." : "Sign In"}
                 </Button>
@@ -187,7 +187,7 @@ export function LoginPage() {
         )}
 
         <div className="mt-8 text-center">
-          <Link to="/" className="text-[#16a34a] hover:text-[#15803d]">
+          <Link to="/" className="text-[#0284c7] hover:text-[#0369a1]">
             ← Back to Home
           </Link>
         </div>
