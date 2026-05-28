@@ -1,10 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { format } from "date-fns";
-import {
-  Laptop,
-  Mail,
-  Users,
-} from "lucide-react";
+import { CheckCircle2, Clock3, LoaderCircle } from "lucide-react";
+import { useSearchParams } from "react-router";
 import { Badge } from "../components/ui/badge";
 import { Button } from "../components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
@@ -27,8 +24,16 @@ import {
 } from "../components/ui/table";
 import { Textarea } from "../components/ui/textarea";
 import {
+  listSupportTickets,
+  updateSupportTicket,
+  type SupportTicket,
+} from "../lib/admin-data";
+import {
+  hrQueryLabels,
   hrStatusLabels,
+  isResolvedStatus,
   listHrRequests,
+  parseAssetList,
   updateHrRequestAdmin,
   type HrRequest,
   type HrRequestStatus,
@@ -40,70 +45,219 @@ const inputClassName =
 
 const statusClasses = {
   pending: "border-0 bg-amber-100 text-amber-700",
+  progress: "border-0 bg-blue-100 text-blue-700",
   in_progress: "border-0 bg-blue-100 text-blue-700",
+  assigned: "border-0 bg-emerald-100 text-emerald-700",
+  collected: "border-0 bg-violet-100 text-violet-700",
+  resolved: "border-0 bg-sky-100 text-sky-700",
   completed: "border-0 bg-sky-100 text-sky-700",
 };
 
+type AdminTicketRow =
+  | {
+      kind: "hr";
+      id: string;
+      ticketNo: string;
+      requester: string;
+      department: string;
+      category: string;
+      priority: string;
+      status: HrRequestStatus;
+      createdAt: string;
+      raw: HrRequest;
+    }
+  | {
+      kind: "support";
+      id: string;
+      ticketNo: string;
+      requester: string;
+      department: string;
+      category: string;
+      priority: string;
+      status: HrRequestStatus;
+      createdAt: string;
+      raw: SupportTicket;
+    };
+
 export function AdminDashboard() {
+  const [searchParams] = useSearchParams();
   const [requests, setRequests] = useState<HrRequest[]>([]);
+  const [supportTickets, setSupportTickets] = useState<SupportTicket[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
-  const [selectedRequestId, setSelectedRequestId] = useState<string | null>(null);
+  const [selectedTicketKey, setSelectedTicketKey] = useState<string | null>(null);
   const [adminForm, setAdminForm] = useState({
-    official_email: "",
-    laptop_allocation: "",
-    remarks: "",
+    email: "",
+    laptop: "",
+    phone: "",
+    sim: "",
+    assignee: "",
+    resolution_notes: "",
     status: "pending" as HrRequestStatus,
   });
 
-  const loadRequests = async () => {
-    setLoading(true);
+  const loadDashboardData = async (options?: { silent?: boolean }) => {
+    if (!options?.silent) {
+      setLoading(true);
+    }
+
     setError("");
 
     try {
-      const result = await listHrRequests();
-      setRequests(result.filter((request) => request.query_type === "new_employee"));
+      const [hrRows, supportRows] = await Promise.all([listHrRequests(), listSupportTickets()]);
+      setRequests(hrRows);
+      setSupportTickets(supportRows);
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : "Failed to load admin requests.");
+      setError(loadError instanceof Error ? loadError.message : "Failed to load admin data.");
     } finally {
-      setLoading(false);
+      if (!options?.silent) {
+        setLoading(false);
+      }
     }
   };
 
   useEffect(() => {
-    void loadRequests();
+    void loadDashboardData();
   }, []);
 
-  const selectedRequest = useMemo(
-    () => requests.find((request) => request.id === selectedRequestId) ?? null,
-    [requests, selectedRequestId],
+  useEffect(() => {
+    const intervalId = window.setInterval(() => {
+      void loadDashboardData({ silent: true });
+    }, 15000);
+
+    return () => window.clearInterval(intervalId);
+  }, []);
+
+  const totals = useMemo(() => {
+    const allStatuses = [
+      ...requests.map((request) => request.status),
+      ...supportTickets.map((ticket) => ticket.status as HrRequestStatus),
+    ];
+
+    return {
+      resolved: allStatuses.filter((status) => isResolvedStatus(status)).length,
+      pending: allStatuses.filter((status) => status === "pending").length,
+      in_progress: allStatuses.filter((status) => status === "in_progress").length,
+    };
+  }, [requests, supportTickets]);
+
+  const combinedTickets = useMemo<AdminTicketRow[]>(() => {
+    const hrRows: AdminTicketRow[] = requests
+      .filter((request) => !isResolvedStatus(request.status))
+      .map((request) => ({
+        kind: "hr",
+        id: `hr:${request.id}`,
+        ticketNo: request.id,
+        requester: request.employee_name,
+        department: request.location,
+        category: hrQueryLabels[request.query_type],
+        priority:
+          request.query_type === "exit_employee"
+            ? request.handover_asset
+            : request.assign_requirement,
+        status: request.status,
+        createdAt: request.created_at,
+        raw: request,
+      }));
+
+    const supportRows: AdminTicketRow[] = supportTickets
+      .filter((ticket) => !isResolvedStatus(ticket.status))
+      .map((ticket) => ({
+        kind: "support",
+        id: `support:${ticket.id}`,
+        ticketNo: ticket.id,
+        requester: ticket.requester,
+        department: ticket.department ?? "-",
+        category: ticket.category,
+        priority: ticket.priority,
+        status: ticket.status as HrRequestStatus,
+        createdAt: ticket.created_at,
+        raw: ticket,
+      }));
+
+    return [...hrRows, ...supportRows].sort(
+      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+    );
+  }, [requests, supportTickets]);
+
+  const searchQuery = searchParams.get("q")?.trim().toLowerCase() ?? "";
+
+  const filteredTickets = useMemo(() => {
+    if (!searchQuery) {
+      return combinedTickets;
+    }
+
+    return combinedTickets.filter((ticket) => {
+      const ticketNo = ticket.ticketNo.toLowerCase();
+      const requester = ticket.requester.toLowerCase();
+      return ticketNo.includes(searchQuery) || requester.includes(searchQuery);
+    });
+  }, [combinedTickets, searchQuery]);
+
+  const selectedTicket = useMemo(
+    () => combinedTickets.find((ticket) => ticket.id === selectedTicketKey) ?? null,
+    [combinedTickets, selectedTicketKey],
   );
 
   useEffect(() => {
-    if (!selectedRequest) {
+    if (!selectedTicket) {
+      return;
+    }
+
+    if (selectedTicket.kind === "hr") {
+      setAdminForm({
+        email: selectedTicket.raw.email,
+        laptop: selectedTicket.raw.laptop,
+        phone: selectedTicket.raw.phone,
+        sim: selectedTicket.raw.sim,
+        assignee: "",
+        resolution_notes: "",
+        status: isResolvedStatus(selectedTicket.raw.status)
+          ? selectedTicket.raw.query_type === "exit_employee"
+            ? "collected"
+            : "assigned"
+          : selectedTicket.raw.status,
+      });
       return;
     }
 
     setAdminForm({
-      official_email: selectedRequest.official_email ?? "",
-      laptop_allocation: selectedRequest.laptop_allocation ?? "",
-      remarks: selectedRequest.remarks,
-      status: selectedRequest.status,
+      email: "",
+      laptop: "",
+      phone: "",
+      sim: "",
+      assignee: selectedTicket.raw.assignee ?? "",
+      resolution_notes: selectedTicket.raw.resolution_notes ?? "",
+      status: isResolvedStatus(selectedTicket.raw.status)
+        ? "resolved"
+        : (selectedTicket.raw.status as HrRequestStatus),
     });
-  }, [selectedRequest]);
+  }, [selectedTicket]);
+
+  const selectedHrAssets =
+    selectedTicket?.kind === "hr"
+      ? (
+          parseAssetList(
+          selectedTicket.raw.query_type === "exit_employee"
+            ? selectedTicket.raw.handover_asset
+            : selectedTicket.raw.assign_requirement,
+          ).length > 0
+            ? parseAssetList(
+                selectedTicket.raw.query_type === "exit_employee"
+                  ? selectedTicket.raw.handover_asset
+                  : selectedTicket.raw.assign_requirement,
+              )
+            : hrAssetOptions
+        )
+      : [];
 
   const handleUpdate = async (event: React.FormEvent) => {
     event.preventDefault();
 
-    if (!selectedRequest) {
-      setError("Please choose a request to update.");
-      return;
-    }
-
-    if (!adminForm.official_email || !adminForm.laptop_allocation || !adminForm.remarks) {
-      setError("Official e-mail, laptop allocation, remarks, and status are all mandatory.");
+    if (!selectedTicket) {
+      setError("Please choose a ticket to update.");
       return;
     }
 
@@ -112,18 +266,53 @@ export function AdminDashboard() {
     setSuccessMessage("");
 
     try {
-      await updateHrRequestAdmin({
-        id: selectedRequest.id,
-        official_email: adminForm.official_email,
-        laptop_allocation: adminForm.laptop_allocation,
-        remarks: adminForm.remarks,
-        status: adminForm.status,
-      });
+      if (selectedTicket.kind === "hr") {
+        if (adminForm.status === "assigned" || adminForm.status === "collected") {
+          const missingAssets = selectedHrAssets.filter((asset) => {
+            if (asset === "E-Mail") {
+              return !adminForm.email.trim();
+            }
 
-      setSuccessMessage("Request updated successfully.");
-      await loadRequests();
+            if (asset === "Laptop") {
+              return !adminForm.laptop.trim();
+            }
+
+            if (asset === "Phone") {
+              return !adminForm.phone.trim();
+            }
+
+            return !adminForm.sim.trim();
+          });
+
+          if (missingAssets.length > 0) {
+            setError(`Please add details for: ${missingAssets.join(", ")}`);
+            setSaving(false);
+            return;
+          }
+        }
+
+        await updateHrRequestAdmin({
+          id: selectedTicket.raw.id,
+          status: adminForm.status,
+          email: adminForm.email,
+          laptop: adminForm.laptop,
+          phone: adminForm.phone,
+          sim: adminForm.sim,
+        });
+      } else {
+        await updateSupportTicket({
+          id: selectedTicket.raw.id,
+          status: adminForm.status,
+          assignee: adminForm.assignee,
+          resolution_notes: adminForm.resolution_notes,
+        });
+      }
+
+      setSuccessMessage("Ticket updated successfully.");
+      setSelectedTicketKey(null);
+      await loadDashboardData();
     } catch (updateError) {
-      setError(updateError instanceof Error ? updateError.message : "Failed to update request.");
+      setError(updateError instanceof Error ? updateError.message : "Failed to update ticket.");
     } finally {
       setSaving(false);
     }
@@ -134,26 +323,63 @@ export function AdminDashboard() {
       <div>
         <h1 className="mb-2 text-3xl font-semibold text-slate-950">Admin Dashboard</h1>
         <p className="text-slate-600">
-          Review HR onboarding requests and update e-mail, laptop allocation, and status.
+          Review all open tickets in one queue and move them through pending, in progress, and
+          resolved states.
         </p>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-3">
+        <Card className={surfaceClass}>
+          <CardContent className="flex items-center gap-4 p-6">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-sky-100 text-sky-700">
+              <CheckCircle2 className="h-6 w-6" />
+            </div>
+            <div>
+              <p className="text-sm text-slate-500">Number of Resolved Tickets</p>
+              <p className="text-3xl font-semibold text-slate-950">{totals.resolved}</p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className={surfaceClass}>
+          <CardContent className="flex items-center gap-4 p-6">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-100 text-amber-700">
+              <Clock3 className="h-6 w-6" />
+            </div>
+            <div>
+              <p className="text-sm text-slate-500">Pending Tickets</p>
+              <p className="text-3xl font-semibold text-slate-950">{totals.pending}</p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className={surfaceClass}>
+          <CardContent className="flex items-center gap-4 p-6">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-100 text-blue-700">
+              <LoaderCircle className="h-6 w-6" />
+            </div>
+            <div>
+              <p className="text-sm text-slate-500">Tickets In Progress</p>
+              <p className="text-3xl font-semibold text-slate-950">{totals.in_progress}</p>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       <Card className={surfaceClass}>
         <CardHeader>
-          <CardTitle className="text-slate-950">Submitted HR Requests</CardTitle>
+          <CardTitle className="text-slate-950">Raise Ticket Requests</CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="overflow-hidden rounded-lg border border-slate-200">
             <Table>
               <TableHeader>
                 <TableRow className="border-slate-200 bg-slate-50 hover:bg-slate-50">
-                  <TableHead className="text-slate-600">Employee ID</TableHead>
-                  <TableHead className="text-slate-600">Employee Name</TableHead>
-                  <TableHead className="text-slate-600">Designation</TableHead>
-                  <TableHead className="text-slate-600">Location</TableHead>
-                  <TableHead className="text-slate-600">Assigned Requirement</TableHead>
+                  <TableHead className="text-slate-600">Ticket No</TableHead>
+                  <TableHead className="text-slate-600">Requester</TableHead>
+                  <TableHead className="text-slate-600">Department</TableHead>
+                  <TableHead className="text-slate-600">Category</TableHead>
+                  <TableHead className="text-slate-600">Priority / Requirement</TableHead>
                   <TableHead className="text-slate-600">Status</TableHead>
-                  <TableHead className="text-slate-600">Created Date</TableHead>
+                  <TableHead className="text-slate-600">Created</TableHead>
                   <TableHead className="text-slate-600">Action</TableHead>
                 </TableRow>
               </TableHeader>
@@ -161,37 +387,39 @@ export function AdminDashboard() {
                 {loading ? (
                   <TableRow className="border-slate-200">
                     <TableCell colSpan={8} className="py-8 text-center text-slate-500">
-                      Loading requests...
+                      Loading tickets...
                     </TableCell>
                   </TableRow>
-                ) : requests.length === 0 ? (
+                ) : filteredTickets.length === 0 ? (
                   <TableRow className="border-slate-200">
                     <TableCell colSpan={8} className="py-8 text-center text-slate-500">
-                      No HR requests submitted yet.
+                      {searchQuery
+                        ? "No tickets match this search."
+                        : "No open tickets available."}
                     </TableCell>
                   </TableRow>
                 ) : (
-                  requests.map((request) => (
-                    <TableRow key={request.id} className="border-slate-200 hover:bg-slate-50">
-                      <TableCell className="font-mono text-slate-950">{request.employee_id}</TableCell>
-                      <TableCell className="text-slate-950">{request.employee_name}</TableCell>
-                      <TableCell className="text-slate-600">{request.designation}</TableCell>
-                      <TableCell className="text-slate-600">{request.location}</TableCell>
-                      <TableCell className="text-slate-600">{request.assign_requirement}</TableCell>
+                  filteredTickets.map((ticket) => (
+                    <TableRow key={ticket.id} className="border-slate-200 hover:bg-slate-50">
+                      <TableCell className="font-mono text-slate-950">{ticket.ticketNo}</TableCell>
+                      <TableCell className="text-slate-950">{ticket.requester}</TableCell>
+                      <TableCell className="text-slate-600">{ticket.department}</TableCell>
+                      <TableCell className="text-slate-600">{ticket.category}</TableCell>
+                      <TableCell className="text-slate-600">{ticket.priority}</TableCell>
                       <TableCell>
-                        <Badge className={statusClasses[request.status]}>
-                          {hrStatusLabels[request.status]}
+                        <Badge className={statusClasses[ticket.status]}>
+                          {hrStatusLabels[ticket.status]}
                         </Badge>
                       </TableCell>
                       <TableCell className="text-slate-500">
-                        {format(new Date(request.created_at), "dd MMM yyyy")}
+                        {format(new Date(ticket.createdAt), "dd MMM yyyy")}
                       </TableCell>
                       <TableCell>
                         <Button
                           type="button"
                           variant="outline"
                           className="border-slate-300 bg-white text-slate-900 hover:bg-slate-50"
-                          onClick={() => setSelectedRequestId(request.id)}
+                          onClick={() => setSelectedTicketKey(ticket.id)}
                         >
                           Update
                         </Button>
@@ -203,53 +431,170 @@ export function AdminDashboard() {
             </Table>
           </div>
 
-          {selectedRequest ? (
+          {selectedTicket ? (
             <form onSubmit={handleUpdate} className="grid gap-6 xl:grid-cols-[1fr_360px]">
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                  <p className="text-sm text-slate-500">Employee</p>
-                  <p className="mt-2 font-semibold text-slate-950">{selectedRequest.employee_name}</p>
-                  <p className="text-sm text-slate-600">{selectedRequest.designation}</p>
+                  <p className="text-sm text-slate-500">Ticket No</p>
+                  <p className="mt-2 font-mono text-slate-950">{selectedTicket.ticketNo}</p>
+                  <p className="text-sm text-slate-600">{selectedTicket.category}</p>
                 </div>
                 <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                  <p className="text-sm text-slate-500">Request Details</p>
-                  <p className="mt-2 text-slate-950">{selectedRequest.assign_requirement}</p>
-                  <p className="text-sm text-slate-600">{selectedRequest.location}</p>
+                  <p className="text-sm text-slate-500">Requester</p>
+                  <p className="mt-2 font-semibold text-slate-950">{selectedTicket.requester}</p>
+                  <p className="text-sm text-slate-600">{selectedTicket.department}</p>
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="official_email">Official E-mail *</Label>
-                  <Input
-                    id="official_email"
-                    value={adminForm.official_email}
-                    onChange={(event) =>
-                      setAdminForm((current) => ({
-                        ...current,
-                        official_email: event.target.value,
-                      }))
-                    }
-                    className={inputClassName}
-                    placeholder="name@levista.com"
-                    required
-                  />
-                </div>
+                {selectedTicket.kind === "hr" ? (
+                  <>
+                    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 md:col-span-2">
+                      <p className="text-sm font-medium text-slate-500">Employee Submitted Details</p>
+                      <div className="mt-4 grid gap-4 text-sm md:grid-cols-2">
+                        <div>
+                          <p className="text-slate-500">Employee ID</p>
+                          <p className="mt-1 font-mono text-slate-950">{selectedTicket.raw.employee_id}</p>
+                        </div>
+                        <div>
+                          <p className="text-slate-500">Employee Name</p>
+                          <p className="mt-1 text-slate-950">{selectedTicket.raw.employee_name}</p>
+                        </div>
+                        <div>
+                          <p className="text-slate-500">Designation</p>
+                          <p className="mt-1 text-slate-950">{selectedTicket.raw.designation}</p>
+                        </div>
+                        <div>
+                          <p className="text-slate-500">Reporting To</p>
+                          <p className="mt-1 text-slate-950">{selectedTicket.raw.reporting_to}</p>
+                        </div>
+                        <div>
+                          <p className="text-slate-500">Mobile Number</p>
+                          <p className="mt-1 text-slate-950">{selectedTicket.raw.mobile_number}</p>
+                        </div>
+                        <div>
+                          <p className="text-slate-500">Location</p>
+                          <p className="mt-1 text-slate-950">{selectedTicket.raw.location}</p>
+                        </div>
+                        <div>
+                          <p className="text-slate-500">
+                            {selectedTicket.raw.query_type === "exit_employee" ? "DOE" : "DOJ"}
+                          </p>
+                          <p className="mt-1 text-slate-950">{selectedTicket.raw.doe}</p>
+                        </div>
+                        <div>
+                          <p className="text-slate-500">
+                            {selectedTicket.raw.query_type === "exit_employee"
+                              ? "Handover Asset"
+                              : "Assignment Requirement"}
+                          </p>
+                          <p className="mt-1 text-slate-950">
+                            {selectedTicket.raw.query_type === "exit_employee"
+                              ? selectedTicket.raw.handover_asset
+                              : selectedTicket.raw.assign_requirement}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="laptop_allocation">Laptop Allocation *</Label>
-                  <Input
-                    id="laptop_allocation"
-                    value={adminForm.laptop_allocation}
-                    onChange={(event) =>
-                      setAdminForm((current) => ({
-                        ...current,
-                        laptop_allocation: event.target.value,
-                      }))
-                    }
-                    className={inputClassName}
-                    placeholder="Dell Latitude 5440 / Asset ID"
-                    required
-                  />
-                </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="hr-email">E-mail ID</Label>
+                      <Input
+                        id="hr-email"
+                        value={adminForm.email}
+                        onChange={(event) =>
+                          setAdminForm((current) => ({
+                            ...current,
+                            email: event.target.value,
+                          }))
+                        }
+                        className={inputClassName}
+                        placeholder="Enter e-mail ID"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="hr-laptop">Laptop Asset Number</Label>
+                      <Input
+                        id="hr-laptop"
+                        value={adminForm.laptop}
+                        onChange={(event) =>
+                          setAdminForm((current) => ({
+                            ...current,
+                            laptop: event.target.value,
+                          }))
+                        }
+                        className={inputClassName}
+                        placeholder="Enter laptop asset number"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="hr-phone">Phone Number</Label>
+                      <Input
+                        id="hr-phone"
+                        value={adminForm.phone}
+                        onChange={(event) =>
+                          setAdminForm((current) => ({
+                            ...current,
+                            phone: event.target.value,
+                          }))
+                        }
+                        className={inputClassName}
+                        placeholder="Enter phone number"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="hr-sim">SIM Number</Label>
+                      <Input
+                        id="hr-sim"
+                        value={adminForm.sim}
+                        onChange={(event) =>
+                          setAdminForm((current) => ({
+                            ...current,
+                            sim: event.target.value,
+                          }))
+                        }
+                        className={inputClassName}
+                        placeholder="Enter SIM number"
+                      />
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="space-y-2">
+                      <Label htmlFor="ticket_assignee">Assignee</Label>
+                      <Input
+                        id="ticket_assignee"
+                        value={adminForm.assignee}
+                        onChange={(event) =>
+                          setAdminForm((current) => ({
+                            ...current,
+                            assignee: event.target.value,
+                          }))
+                        }
+                        className={inputClassName}
+                        placeholder="Admin or support owner"
+                      />
+                    </div>
+
+                    <div className="space-y-2 md:col-span-2">
+                      <Label htmlFor="ticket_notes">Resolution Notes</Label>
+                      <Textarea
+                        id="ticket_notes"
+                        rows={4}
+                        value={adminForm.resolution_notes}
+                        onChange={(event) =>
+                          setAdminForm((current) => ({
+                            ...current,
+                            resolution_notes: event.target.value,
+                          }))
+                        }
+                        className={inputClassName}
+                        placeholder="Add progress or resolution notes"
+                      />
+                    </div>
+                  </>
+                )}
 
                 <div className="space-y-2 md:col-span-2">
                   <Label>Status *</Label>
@@ -266,34 +611,34 @@ export function AdminDashboard() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="pending">Pending</SelectItem>
-                      <SelectItem value="in_progress">In Progress</SelectItem>
-                      <SelectItem value="completed">Completed</SelectItem>
+                      {selectedTicket.kind === "hr" ? (
+                        selectedTicket.raw.query_type === "exit_employee" ? (
+                          <>
+                            <SelectItem value="pending">Pending</SelectItem>
+                            <SelectItem value="progress">Progress</SelectItem>
+                            <SelectItem value="collected">Collected</SelectItem>
+                          </>
+                        ) : (
+                          <>
+                            <SelectItem value="pending">Pending</SelectItem>
+                            <SelectItem value="progress">Progress</SelectItem>
+                            <SelectItem value="assigned">Assigned</SelectItem>
+                          </>
+                        )
+                      ) : (
+                        <>
+                          <SelectItem value="pending">Pending</SelectItem>
+                          <SelectItem value="in_progress">In Progress</SelectItem>
+                          <SelectItem value="resolved">Resolved</SelectItem>
+                        </>
+                      )}
                     </SelectContent>
                   </Select>
-                </div>
-
-                <div className="space-y-2 md:col-span-2">
-                  <Label htmlFor="admin_remarks">Remarks *</Label>
-                  <Textarea
-                    id="admin_remarks"
-                    rows={4}
-                    value={adminForm.remarks}
-                    onChange={(event) =>
-                      setAdminForm((current) => ({
-                        ...current,
-                        remarks: event.target.value,
-                      }))
-                    }
-                    className={inputClassName}
-                    placeholder="Add admin update remarks"
-                    required
-                  />
                 </div>
               </div>
 
               <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
-                <h3 className="text-lg font-semibold text-slate-950">Status Summary</h3>
+                <h3 className="text-lg font-semibold text-slate-950">Ticket Summary</h3>
                 <div className="mt-4 space-y-4 text-sm">
                   <div>
                     <p className="text-slate-500">Current Status</p>
@@ -301,14 +646,56 @@ export function AdminDashboard() {
                       {hrStatusLabels[adminForm.status]}
                     </Badge>
                   </div>
-                  <div>
-                    <p className="text-slate-500">Assigned Requirement</p>
-                    <p className="mt-1 text-slate-950">{selectedRequest.assign_requirement}</p>
-                  </div>
-                  <div>
-                    <p className="text-slate-500">Reporting To</p>
-                    <p className="mt-1 text-slate-950">{selectedRequest.reporting_to}</p>
-                  </div>
+
+                  {selectedTicket.kind === "hr" ? (
+                    <>
+                      <div>
+                        <p className="text-slate-500">Request Type</p>
+                        <p className="mt-1 text-slate-950">{hrQueryLabels[selectedTicket.raw.query_type]}</p>
+                      </div>
+                      <div>
+                        <p className="text-slate-500">Requested Assets</p>
+                        <p className="mt-1 text-slate-950">
+                          {selectedHrAssets.length > 0 ? selectedHrAssets.join(", ") : "-"}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-slate-500">Admin Provisioning Details</p>
+                        <div className="mt-1 space-y-1 text-slate-950">
+                          {adminForm.email ? <p>E-Mail: {adminForm.email}</p> : null}
+                          {adminForm.laptop ? <p>Laptop: {adminForm.laptop}</p> : null}
+                          {adminForm.phone ? <p>Phone: {adminForm.phone}</p> : null}
+                          {adminForm.sim ? <p>SIM: {adminForm.sim}</p> : null}
+                          {!adminForm.email &&
+                          !adminForm.laptop &&
+                          !adminForm.phone &&
+                          !adminForm.sim ? (
+                            <p>-</p>
+                          ) : null}
+                        </div>
+                      </div>
+                      <div>
+                        <p className="text-slate-500">Last Updated</p>
+                        <p className="mt-1 text-slate-950">
+                          {format(new Date(selectedTicket.raw.updated_at), "dd MMM yyyy, p")}
+                        </p>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div>
+                        <p className="text-slate-500">Issue</p>
+                        <p className="mt-1 text-slate-950">{selectedTicket.raw.title}</p>
+                      </div>
+                      <div>
+                        <p className="text-slate-500">Description</p>
+                        <p className="mt-1 whitespace-pre-wrap text-slate-950">
+                          {selectedTicket.raw.description || "-"}
+                        </p>
+                      </div>
+                    </>
+                  )}
+
                   <div className="space-y-2 border-t border-slate-200 pt-4">
                     {error ? (
                       <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
@@ -332,38 +719,6 @@ export function AdminDashboard() {
               </div>
             </form>
           ) : null}
-        </CardContent>
-      </Card>
-
-      <Card className={surfaceClass}>
-        <CardContent className="grid gap-4 p-6 md:grid-cols-3">
-          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-            <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-[#38bdf8]/15 text-[#0284c7]">
-              <Mail className="h-5 w-5" />
-            </div>
-            <p className="font-medium text-slate-950">Official E-mail</p>
-            <p className="mt-1 text-sm text-slate-600">
-              Admin updates official e-mail after request review.
-            </p>
-          </div>
-          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-            <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-[#38bdf8]/15 text-[#0284c7]">
-              <Laptop className="h-5 w-5" />
-            </div>
-            <p className="font-medium text-slate-950">Laptop Allocation</p>
-            <p className="mt-1 text-sm text-slate-600">
-              Device or asset details are captured here for HR visibility.
-            </p>
-          </div>
-          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-            <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-[#38bdf8]/15 text-[#0284c7]">
-              <Users className="h-5 w-5" />
-            </div>
-            <p className="font-medium text-slate-950">Shared Tracking</p>
-            <p className="mt-1 text-sm text-slate-600">
-              HR and Admin view the same request record and status trail.
-            </p>
-          </div>
         </CardContent>
       </Card>
     </div>

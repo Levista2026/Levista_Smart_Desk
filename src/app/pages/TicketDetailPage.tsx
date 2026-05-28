@@ -9,11 +9,10 @@ import { format } from "date-fns";
 import { getSupportTicketById, type SupportTicket } from "../lib/admin-data";
 
 const statusColors: Record<string, string> = {
-  open: "bg-blue-500/20 text-blue-300 border-blue-500/30",
-  "in-progress": "bg-yellow-500/20 text-yellow-300 border-yellow-500/30",
   in_progress: "bg-yellow-500/20 text-yellow-300 border-yellow-500/30",
+  pending: "bg-amber-500/20 text-amber-300 border-amber-500/30",
   resolved: "bg-sky-500/20 text-sky-300 border-sky-500/30",
-  closed: "bg-gray-500/20 text-gray-300 border-gray-500/30",
+  completed: "bg-sky-500/20 text-sky-300 border-sky-500/30",
 };
 
 const priorityColors: Record<string, string> = {
@@ -21,6 +20,13 @@ const priorityColors: Record<string, string> = {
   medium: "bg-blue-500/20 text-blue-300",
   high: "bg-orange-500/20 text-orange-300",
   urgent: "bg-red-500/20 text-red-300",
+};
+
+const statusLabels: Record<string, string> = {
+  pending: "Pending",
+  in_progress: "In Progress",
+  resolved: "Resolved",
+  completed: "Resolved",
 };
 
 export function TicketDetailPage() {
@@ -86,7 +92,7 @@ export function TicketDetailPage() {
                   <div className="mt-3 flex items-center gap-2">
                     <span className="font-mono text-slate-500">{ticket.id}</span>
                     <Badge className={`${statusColors[ticket.status] ?? "bg-slate-100 text-slate-700"} border`}>
-                      {ticket.status}
+                      {statusLabels[ticket.status] ?? ticket.status}
                     </Badge>
                     <Badge className={`${priorityColors[ticket.priority] ?? "bg-slate-100 text-slate-700"} border-0`}>
                       {ticket.priority}
@@ -121,6 +127,13 @@ export function TicketDetailPage() {
                       <span className="text-slate-500">Assignee:</span>
                       <span className="font-medium text-slate-950">{ticket.assignee || "-"}</span>
                     </div>
+                    <div className="flex items-start gap-2 text-sm">
+                      <Tag className="mt-0.5 h-4 w-4 text-slate-500" />
+                      <span className="text-slate-500">Resolution Notes:</span>
+                      <span className="font-medium text-slate-950">
+                        {ticket.resolution_notes || "-"}
+                      </span>
+                    </div>
                     <div className="flex items-center gap-2 text-sm">
                       <Tag className="h-4 w-4 text-slate-500" />
                       <span className="text-slate-500">Category:</span>
@@ -130,6 +143,21 @@ export function TicketDetailPage() {
                       <Tag className="h-4 w-4 text-slate-500" />
                       <span className="text-slate-500">Department:</span>
                       <span className="font-medium text-slate-950">{ticket.department || "-"}</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm">
+                      <Tag className="h-4 w-4 text-slate-500" />
+                      <span className="text-slate-500">Employee ID:</span>
+                      <span className="font-medium text-slate-950">{ticket.employee_id || "-"}</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm">
+                      <User className="h-4 w-4 text-slate-500" />
+                      <span className="text-slate-500">Email:</span>
+                      <span className="font-medium text-slate-950">{ticket.email || "-"}</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm">
+                      <User className="h-4 w-4 text-slate-500" />
+                      <span className="text-slate-500">Mobile:</span>
+                      <span className="font-medium text-slate-950">{ticket.mobile || "-"}</span>
                     </div>
                     <div className="flex items-center gap-2 text-sm">
                       <Calendar className="h-4 w-4 text-slate-500" />

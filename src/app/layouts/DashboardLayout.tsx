@@ -1,4 +1,4 @@
-import { Outlet, useLocation, Link, useNavigate } from "react-router";
+import { Outlet, useLocation, Link, useNavigate, useSearchParams } from "react-router";
 import { useEffect, useState } from "react";
 import {
   LayoutDashboard,
@@ -50,9 +50,11 @@ const hrNavItems: NavItem[] = [
 export function DashboardLayout() {
   const location = useLocation();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [currentUserName, setCurrentUserName] = useState("User");
   const [currentUserDesignation, setCurrentUserDesignation] = useState("Portal Access");
+  const [searchValue, setSearchValue] = useState(searchParams.get("q") ?? "");
   const isAdmin = location.pathname.startsWith("/admin");
   const navItems = isAdmin ? adminNavItems : hrNavItems;
   const notifications = isAdmin
@@ -66,6 +68,10 @@ export function DashboardLayout() {
         "2 requests are waiting for admin review",
         "Status changed on one submitted employee request",
       ];
+
+  useEffect(() => {
+    setSearchValue(searchParams.get("q") ?? "");
+  }, [searchParams]);
 
   useEffect(() => {
     const syncStoredUser = () => {
@@ -100,6 +106,21 @@ export function DashboardLayout() {
   const handleLogout = () => {
     clearStoredRole();
     navigate("/login", { replace: true });
+  };
+
+  const handleSearchChange = (value: string) => {
+    setSearchValue(value);
+
+    const nextParams = new URLSearchParams(searchParams);
+    const trimmedValue = value.trim();
+
+    if (trimmedValue) {
+      nextParams.set("q", trimmedValue);
+    } else {
+      nextParams.delete("q");
+    }
+
+    setSearchParams(nextParams, { replace: true });
   };
 
   return (
@@ -204,6 +225,8 @@ export function DashboardLayout() {
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
               <Input
                 placeholder="Search tickets, employees..."
+                value={searchValue}
+                onChange={(event) => handleSearchChange(event.target.value)}
                 className="border-slate-300 bg-white pl-10 text-slate-950 placeholder:text-slate-400"
               />
             </div>

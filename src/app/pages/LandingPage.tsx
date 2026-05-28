@@ -1,6 +1,5 @@
 import { Link } from "react-router";
 import { Button } from "../components/ui/button";
-import { ArrowRight, Headphones } from "lucide-react";
 import logoImage from "../../../Logo/Logo.png";
 
 export function LandingPage() {
@@ -21,35 +20,13 @@ export function LandingPage() {
               </div>
             </Link>
           </div>
-
-          <div className="flex items-center gap-3">
-            <Link to="/login">
-              <Button
-                variant="outline"
-                className="hidden border-slate-300 bg-white text-slate-900 hover:bg-slate-50 sm:inline-flex"
-              >
-                Sign in
-              </Button>
-            </Link>
-            <Link to="/raise-ticket">
-              <Button className="bg-[#38bdf8] text-slate-950 shadow-none hover:bg-[#0ea5e9]">
-                Raise a ticket
-              </Button>
-            </Link>
-          </div>
         </div>
       </header>
 
       <main>
         <section className="relative overflow-hidden">
           <div className="absolute inset-x-0 top-0 h-72 bg-[radial-gradient(circle_at_top,_rgba(56,189,248,0.16),_transparent_55%)]" />
-          <div className="mx-auto flex max-w-7xl flex-col items-center px-6 pb-24 pt-20 text-center lg:px-8 lg:pb-32 lg:pt-28">
-            <div className="mb-8 inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm text-slate-600 shadow-sm">
-              <Headphones className="h-4 w-4 text-[#0ea5e9]" />
-              <span>Built only for Levista teams</span>
-              <ArrowRight className="h-4 w-4" />
-            </div>
-
+          <div className="mx-auto flex max-w-7xl flex-col items-center px-6 pb-20 pt-20 text-center lg:px-8 lg:pb-24 lg:pt-28">
             <h1 className="max-w-4xl text-5xl font-semibold tracking-[-0.04em] text-slate-950 md:text-7xl">
               One desk for staff,
               <span className="block text-[#38bdf8]">admin, and HR support</span>
@@ -62,12 +39,12 @@ export function LandingPage() {
             </p>
 
             <div className="mt-10 flex flex-col gap-4 sm:flex-row">
-              <Link to="/raise-ticket">
+              <Link to="/login?role=levista&redirect=%2Fraise-ticket">
                 <Button
                   size="lg"
                   className="h-12 rounded-lg bg-[#38bdf8] px-7 text-slate-950 hover:bg-[#0ea5e9]"
                 >
-                  Start a request
+                  Raise ticket
                 </Button>
               </Link>
               <Link to="/login">
@@ -80,6 +57,10 @@ export function LandingPage() {
                 </Button>
               </Link>
             </div>
+            <p className="mt-4 text-sm text-slate-500">
+              Levista employees will be asked to log in before they can raise a ticket or check
+              ticket status.
+            </p>
           </div>
         </section>
       </main>

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, useLocation } from "react-router";
+import { Link, useLocation, useSearchParams } from "react-router";
 import { Card } from "../components/ui/card";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
@@ -24,11 +24,10 @@ import { formatDistanceToNow } from "date-fns";
 import { listSupportTickets, type SupportTicket } from "../lib/admin-data";
 
 const statusColors: Record<string, string> = {
-  open: "bg-blue-500/20 text-blue-300 border-blue-500/30",
-  "in-progress": "bg-yellow-500/20 text-yellow-300 border-yellow-500/30",
   in_progress: "bg-yellow-500/20 text-yellow-300 border-yellow-500/30",
+  pending: "bg-amber-500/20 text-amber-300 border-amber-500/30",
   resolved: "bg-sky-500/20 text-sky-300 border-sky-500/30",
-  closed: "bg-gray-500/20 text-gray-300 border-gray-500/30",
+  completed: "bg-sky-500/20 text-sky-300 border-sky-500/30",
 };
 
 const priorityColors: Record<string, string> = {
@@ -40,13 +39,18 @@ const priorityColors: Record<string, string> = {
 
 export function TicketsPage() {
   const location = useLocation();
+  const [searchParams] = useSearchParams();
   const isAdmin = location.pathname.startsWith("/admin");
   const [tickets, setTickets] = useState<SupportTicket[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery, setSearchQuery] = useState(searchParams.get("q") ?? "");
   const [statusFilter, setStatusFilter] = useState("all");
   const [priorityFilter, setPriorityFilter] = useState("all");
+
+  useEffect(() => {
+    setSearchQuery(searchParams.get("q") ?? "");
+  }, [searchParams]);
 
   useEffect(() => {
     const loadTickets = async () => {
@@ -105,10 +109,9 @@ export function TicketsPage() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Statuses</SelectItem>
-              <SelectItem value="open">Open</SelectItem>
-              <SelectItem value="in-progress">In Progress</SelectItem>
+              <SelectItem value="pending">Pending</SelectItem>
+              <SelectItem value="in_progress">In Progress</SelectItem>
               <SelectItem value="resolved">Resolved</SelectItem>
-              <SelectItem value="closed">Closed</SelectItem>
             </SelectContent>
           </Select>
           <Select value={priorityFilter} onValueChange={setPriorityFilter}>
@@ -172,7 +175,7 @@ export function TicketsPage() {
                     <TableCell className="text-slate-600">{ticket.category}</TableCell>
                     <TableCell>
                       <Badge className={`${statusColors[ticket.status] ?? "bg-slate-100 text-slate-700"} border`}>
-                        {ticket.status}
+                        {statusLabels[ticket.status] ?? ticket.status}
                       </Badge>
                     </TableCell>
                     <TableCell>
@@ -206,3 +209,9 @@ export function TicketsPage() {
     </div>
   );
 }
+const statusLabels: Record<string, string> = {
+  pending: "Pending",
+  in_progress: "In Progress",
+  resolved: "Resolved",
+  completed: "Resolved",
+};

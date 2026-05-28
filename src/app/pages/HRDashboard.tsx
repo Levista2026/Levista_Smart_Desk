@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { format } from "date-fns";
-import { useLocation, useNavigate, useSearchParams } from "react-router";
+import { Check, ChevronDown } from "lucide-react";
+import { useNavigate, useSearchParams } from "react-router";
 import { Badge } from "../components/ui/badge";
 import { Button } from "../components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
+import { Checkbox } from "../components/ui/checkbox";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import {
@@ -21,7 +23,6 @@ import {
   TableHeader,
   TableRow,
 } from "../components/ui/table";
-import { Textarea } from "../components/ui/textarea";
 import {
   createHrRequest,
   hrQueryLabels,
@@ -38,7 +39,7 @@ const inputClassName =
   "border-slate-300 bg-white text-slate-950 placeholder:text-slate-400 focus-visible:ring-[#38bdf8]/40";
 
 const locationOptions: HrLocation[] = ["Bangalore", "Kushal Nagar", "Warehouse"];
-const assignOptions: HrAssignRequirement[] = ["E-mail Creation", "Laptop Allocation"];
+const assignOptions: HrAssignRequirement[] = ["E-Mail", "Laptop", "Phone", "SIM"];
 
 const initialFormState = {
   employee_id: "",
@@ -47,20 +48,22 @@ const initialFormState = {
   designation: "",
   reporting_to: "",
   mobile_number: "",
-  doj: "",
+  doe: "",
   location: "",
   assign_requirements: [] as HrAssignRequirement[],
-  remarks: "",
 };
 
 const statusClasses = {
   pending: "border-0 bg-amber-100 text-amber-700",
+  progress: "border-0 bg-blue-100 text-blue-700",
   in_progress: "border-0 bg-blue-100 text-blue-700",
+  assigned: "border-0 bg-emerald-100 text-emerald-700",
+  collected: "border-0 bg-violet-100 text-violet-700",
+  resolved: "border-0 bg-sky-100 text-sky-700",
   completed: "border-0 bg-sky-100 text-sky-700",
 };
 
 export function HRDashboard() {
-  const location = useLocation();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [queryType, setQueryType] = useState<HrQueryType>("new_employee");
@@ -70,20 +73,27 @@ export function HRDashboard() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
+  const [assetPickerOpen, setAssetPickerOpen] = useState(false);
   const [formData, setFormData] = useState(initialFormState);
   const isViewStatusPage = searchParams.get("tab") === "view-status";
+  const searchQuery = searchParams.get("q")?.trim().toLowerCase() ?? "";
 
-  const loadRequests = async () => {
-    setLoading(true);
+  const loadRequests = async (options?: { silent?: boolean }) => {
+    if (!options?.silent) {
+      setLoading(true);
+    }
+
     setError("");
 
     try {
       const result = await listHrRequests();
-      setRequests(result.filter((request) => request.query_type === "new_employee"));
+      setRequests(result);
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : "Failed to load HR requests.");
     } finally {
-      setLoading(false);
+      if (!options?.silent) {
+        setLoading(false);
+      }
     }
   };
 
@@ -91,10 +101,35 @@ export function HRDashboard() {
     void loadRequests();
   }, []);
 
+  useEffect(() => {
+    const intervalId = window.setInterval(() => {
+      void loadRequests({ silent: true });
+    }, 15000);
+
+    return () => window.clearInterval(intervalId);
+  }, []);
+
   const selectedRequest = useMemo(
     () => requests.find((request) => request.id === selectedRequestId) ?? null,
     [requests, selectedRequestId],
   );
+
+  const filteredRequests = useMemo(() => {
+    if (!searchQuery) {
+      return requests;
+    }
+
+    return requests.filter((request) => {
+      const ticketNo = request.id.toLowerCase();
+      const employeeId = request.employee_id.toLowerCase();
+      const employeeName = request.employee_name.toLowerCase();
+      return (
+        ticketNo.includes(searchQuery) ||
+        employeeId.includes(searchQuery) ||
+        employeeName.includes(searchQuery)
+      );
+    });
+  }, [requests, searchQuery]);
 
   const handleFieldChange = (field: keyof typeof formData, value: string) => {
     setFormData((current) => ({ ...current, [field]: value }));
@@ -124,17 +159,11 @@ export function HRDashboard() {
       !formData.designation ||
       !formData.reporting_to ||
       !formData.mobile_number ||
-      !formData.doj ||
+      !formData.doe ||
       !formData.location ||
-      formData.assign_requirements.length === 0 ||
-      !formData.remarks
+      formData.assign_requirements.length === 0
     ) {
       setError("All fields are mandatory.");
-      return;
-    }
-
-    if (queryType !== "new_employee") {
-      setError("Only New Employee requests are enabled in this module right now.");
       return;
     }
 
@@ -148,14 +177,14 @@ export function HRDashboard() {
         designation: formData.designation,
         reporting_to: formData.reporting_to,
         mobile_number: formData.mobile_number,
-        doj: formData.doj,
+        doe: formData.doe,
         location: formData.location as HrLocation,
         assign_requirement: formData.assign_requirements.join(", "),
-        remarks: formData.remarks,
       });
 
       setFormData(initialFormState);
-      setSuccessMessage("New employee request submitted successfully.");
+      setAssetPickerOpen(false);
+      setSuccessMessage(`${hrQueryLabels[queryType]} request submitted successfully.`);
       await loadRequests();
       navigate("/hr?tab=view-status");
     } catch (submitError) {
@@ -165,34 +194,44 @@ export function HRDashboard() {
     }
   };
 
+  const dateLabel = queryType === "exit_employee" ? "DOE" : "DOJ";
+  const assetLabel = queryType === "exit_employee" ? "Handover Asset" : "Assignment Requirement";
+  const selectedAssetsLabel =
+    formData.assign_requirements.length > 0
+      ? formData.assign_requirements.join(", ")
+      : `Select ${assetLabel.toLowerCase()}`;
+
   return (
     <div className="space-y-6">
       <div>
         <h1 className="mb-2 text-3xl font-semibold text-slate-950">
           {isViewStatusPage ? "HR Request Status" : "HR Dashboard"}
         </h1>
-        <p className="text-slate-600">
-          {isViewStatusPage
-            ? "Track employee onboarding requests and admin progress updates."
-            : "Raise employee onboarding requests for admin follow-up."}
+        {isViewStatusPage ? (
+          <p className="text-slate-600">
+            Track employee onboarding and exit requests with admin progress updates.
+          </p>
+        ) : null}
+        <p className="text-sm text-slate-500">
+          Status and admin-issued asset details refresh automatically every 15 seconds.
         </p>
       </div>
 
       <Card className={surfaceClass}>
         <CardHeader>
           <CardTitle className="text-slate-950">
-            {isViewStatusPage ? "View Status" : "New Employee Request Module"}
+            {isViewStatusPage ? "View Status" : "HR Request Module"}
           </CardTitle>
-          <CardDescription className="text-slate-600">
-            {isViewStatusPage
-              ? "Review submitted requests and check the latest admin updates."
-              : "Select a query and submit the request from HR."}
-          </CardDescription>
+          {isViewStatusPage ? (
+            <CardDescription className="text-slate-600">
+              Review submitted requests and check the latest admin updates.
+            </CardDescription>
+          ) : null}
         </CardHeader>
         <CardContent>
           {!isViewStatusPage ? (
             <div className="space-y-6">
-              <div className="grid gap-4 md:grid-cols-[260px_1fr]">
+              <div className="max-w-[260px] space-y-2">
                 <div className="space-y-2">
                   <Label className="text-slate-900">Select Query</Label>
                   <Select value={queryType} onValueChange={(value) => setQueryType(value as HrQueryType)}>
@@ -200,29 +239,14 @@ export function HRDashboard() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="it_issue">{hrQueryLabels.it_issue}</SelectItem>
                       <SelectItem value="new_employee">{hrQueryLabels.new_employee}</SelectItem>
                       <SelectItem value="exit_employee">{hrQueryLabels.exit_employee}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
-                  {queryType === "new_employee" && (
-                    <p>
-                      HR can submit onboarding requests here. Admin will update official e-mail,
-                      laptop allocation, and request status from the admin portal.
-                    </p>
-                  )}
-                  {queryType === "it_issue" && (
-                    <p>IT Issue flow can be added next. This module currently supports New Employee requests.</p>
-                  )}
-                  {queryType === "exit_employee" && (
-                    <p>Exit Employee flow can be added next. This module currently supports New Employee requests.</p>
-                  )}
-                </div>
               </div>
 
-              {queryType === "new_employee" && (
+              {(queryType === "new_employee" || queryType === "exit_employee") && (
                 <form onSubmit={handleSubmit} className="space-y-6">
                   <div className="grid gap-4 md:grid-cols-2">
                     <div className="space-y-2">
@@ -298,12 +322,12 @@ export function HRDashboard() {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="doj">Date of Joining *</Label>
+                      <Label htmlFor="doe">{dateLabel} *</Label>
                       <Input
-                        id="doj"
+                        id="doe"
                         type="date"
-                        value={formData.doj}
-                        onChange={(event) => handleFieldChange("doj", event.target.value)}
+                        value={formData.doe}
+                        onChange={(event) => handleFieldChange("doe", event.target.value)}
                         className={inputClassName}
                         required
                       />
@@ -330,37 +354,53 @@ export function HRDashboard() {
                       </Select>
                     </div>
                     <div className="space-y-2">
-                      <Label>Assignment Requirement *</Label>
-                      <div className="space-y-3 rounded-xl border border-slate-200 bg-slate-50 p-4">
-                        {assignOptions.map((option) => (
-                          <label key={option} className="flex items-center gap-3 text-sm text-slate-700">
-                            <input
-                              type="checkbox"
-                              checked={formData.assign_requirements.includes(option)}
-                              onChange={() => handleAssignmentToggle(option)}
-                              className="h-4 w-4 rounded border-slate-300 text-[#0284c7] accent-[#0ea5e9]"
-                            />
-                            <span>{option}</span>
-                          </label>
+                      <Label>{assetLabel} *</Label>
+                      <div className="space-y-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => setAssetPickerOpen((current) => !current)}
+                          className="w-full justify-between border-slate-300 bg-white text-slate-950 hover:bg-slate-50"
+                        >
+                          <span className="truncate">{selectedAssetsLabel}</span>
+                          <ChevronDown
+                            className={`h-4 w-4 text-slate-500 transition-transform ${
+                              assetPickerOpen ? "rotate-180" : ""
+                            }`}
+                          />
+                        </Button>
+
+                        {assetPickerOpen ? (
+                          <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
+                            <div className="space-y-2">
+                              {assignOptions.map((option) => (
+                                <label
+                                  key={option}
+                                  className="flex cursor-pointer items-center gap-3 rounded-md px-2 py-2 text-sm text-slate-700 hover:bg-slate-50"
+                                >
+                                  <Checkbox
+                                    checked={formData.assign_requirements.includes(option)}
+                                    onCheckedChange={() => handleAssignmentToggle(option)}
+                                  />
+                                  <span>{option}</span>
+                                </label>
+                              ))}
+                            </div>
+                          </div>
+                        ) : null}
+                      </div>
+                      <div className="flex flex-wrap gap-2 pt-2">
+                        {formData.assign_requirements.map((option) => (
+                          <span
+                            key={option}
+                            className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 text-xs text-slate-700"
+                          >
+                            <Check className="h-3 w-3 text-[#0284c7]" />
+                            {option}
+                          </span>
                         ))}
-                        <p className="text-xs text-slate-500">
-                          Select one or both requirements.
-                        </p>
                       </div>
                     </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="remarks">Remarks *</Label>
-                    <Textarea
-                      id="remarks"
-                      rows={4}
-                      value={formData.remarks}
-                      onChange={(event) => handleFieldChange("remarks", event.target.value)}
-                      className={inputClassName}
-                      placeholder="Add onboarding remarks"
-                      required
-                    />
                   </div>
 
                   {error ? (
@@ -389,15 +429,16 @@ export function HRDashboard() {
             <div className="space-y-6">
               <div className="overflow-hidden rounded-lg border border-slate-200">
                 <Table>
-                  <TableHeader>
-                    <TableRow className="border-slate-200 bg-slate-50 hover:bg-slate-50">
-                      <TableHead className="text-slate-600">Employee ID</TableHead>
-                      <TableHead className="text-slate-600">Employee Name</TableHead>
-                      <TableHead className="text-slate-600">Designation</TableHead>
+                    <TableHeader>
+                      <TableRow className="border-slate-200 bg-slate-50 hover:bg-slate-50">
+                        <TableHead className="text-slate-600">Ticket No</TableHead>
+                        <TableHead className="text-slate-600">Query</TableHead>
+                        <TableHead className="text-slate-600">Employee ID</TableHead>
+                        <TableHead className="text-slate-600">Employee Name</TableHead>
+                        <TableHead className="text-slate-600">Designation</TableHead>
                       <TableHead className="text-slate-600">Location</TableHead>
                       <TableHead className="text-slate-600">Assigned Requirement</TableHead>
                       <TableHead className="text-slate-600">Status</TableHead>
-                      <TableHead className="text-slate-600">Remarks</TableHead>
                       <TableHead className="text-slate-600">Created Date</TableHead>
                       <TableHead className="text-slate-600">View Status</TableHead>
                     </TableRow>
@@ -405,31 +446,38 @@ export function HRDashboard() {
                   <TableBody>
                     {loading ? (
                       <TableRow className="border-slate-200">
-                        <TableCell colSpan={9} className="py-8 text-center text-slate-500">
+                        <TableCell colSpan={10} className="py-8 text-center text-slate-500">
                           Loading requests...
                         </TableCell>
                       </TableRow>
-                    ) : requests.length === 0 ? (
+                    ) : filteredRequests.length === 0 ? (
                       <TableRow className="border-slate-200">
-                        <TableCell colSpan={9} className="py-8 text-center text-slate-500">
-                          No employee requests submitted yet.
+                        <TableCell colSpan={10} className="py-8 text-center text-slate-500">
+                          {searchQuery
+                            ? "No HR requests match this search."
+                            : "No employee requests submitted yet."}
                         </TableCell>
                       </TableRow>
                     ) : (
-                      requests.map((request) => (
+                      filteredRequests.map((request) => (
                         <TableRow key={request.id} className="border-slate-200 hover:bg-slate-50">
+                          <TableCell className="font-mono text-slate-950">{request.id}</TableCell>
+                          <TableCell className="text-slate-600">
+                            {hrQueryLabels[request.query_type]}
+                          </TableCell>
                           <TableCell className="font-mono text-slate-950">{request.employee_id}</TableCell>
                           <TableCell className="text-slate-950">{request.employee_name}</TableCell>
                           <TableCell className="text-slate-600">{request.designation}</TableCell>
                           <TableCell className="text-slate-600">{request.location}</TableCell>
-                          <TableCell className="text-slate-600">{request.assign_requirement}</TableCell>
+                          <TableCell className="text-slate-600">
+                            {request.query_type === "exit_employee"
+                              ? request.handover_asset
+                              : request.assign_requirement}
+                          </TableCell>
                           <TableCell>
                             <Badge className={statusClasses[request.status]}>
                               {hrStatusLabels[request.status]}
                             </Badge>
-                          </TableCell>
-                          <TableCell className="max-w-[220px] text-slate-600">
-                            <div className="truncate">{request.remarks}</div>
                           </TableCell>
                           <TableCell className="text-slate-500">
                             {format(new Date(request.created_at), "dd MMM yyyy")}
@@ -461,7 +509,43 @@ export function HRDashboard() {
                       Track request progress from submission to completion.
                     </CardDescription>
                   </CardHeader>
-                  <CardContent className="grid gap-4 md:grid-cols-2">
+                  <CardContent className="space-y-6">
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <div>
+                        <p className="text-sm text-slate-500">Employee ID</p>
+                        <p className="mt-2 font-mono text-slate-950">{selectedRequest.employee_id}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-slate-500">Employee Name</p>
+                        <p className="mt-2 text-slate-950">{selectedRequest.employee_name}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-slate-500">Designation</p>
+                        <p className="mt-2 text-slate-950">{selectedRequest.designation}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-slate-500">Reporting To</p>
+                        <p className="mt-2 text-slate-950">{selectedRequest.reporting_to}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-slate-500">Mobile Number</p>
+                        <p className="mt-2 text-slate-950">{selectedRequest.mobile_number}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-slate-500">Location</p>
+                        <p className="mt-2 text-slate-950">{selectedRequest.location}</p>
+                      </div>
+                    </div>
+
+                    <div className="grid gap-4 md:grid-cols-2">
+                    <div>
+                      <p className="text-sm text-slate-500">Ticket No</p>
+                      <p className="mt-2 font-mono text-slate-950">{selectedRequest.id}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-slate-500">Query Type</p>
+                      <p className="mt-2 text-slate-950">{hrQueryLabels[selectedRequest.query_type]}</p>
+                    </div>
                     <div>
                       <p className="text-sm text-slate-500">Current Status</p>
                       <Badge className={`mt-2 ${statusClasses[selectedRequest.status]}`}>
@@ -469,22 +553,44 @@ export function HRDashboard() {
                       </Badge>
                     </div>
                     <div>
-                      <p className="text-sm text-slate-500">Assigned Requirement</p>
+                      <p className="text-sm text-slate-500">
+                        {selectedRequest.query_type === "exit_employee"
+                          ? "Handover Asset"
+                          : "Assignment Requirement"}
+                      </p>
                       <p className="mt-2 font-medium text-slate-950">
-                        {selectedRequest.assign_requirement}
+                        {selectedRequest.query_type === "exit_employee"
+                          ? selectedRequest.handover_asset
+                          : selectedRequest.assign_requirement}
                       </p>
                     </div>
                     <div>
-                      <p className="text-sm text-slate-500">Official E-mail</p>
-                      <p className="mt-2 text-slate-950">
-                        {selectedRequest.official_email || "Pending admin update"}
-                      </p>
+                      <p className="text-sm text-slate-500">Assigned Details</p>
+                      <div className="mt-2 space-y-1 text-slate-950">
+                        {selectedRequest.email ? <p>E-Mail: {selectedRequest.email}</p> : null}
+                        {selectedRequest.laptop ? <p>Laptop: {selectedRequest.laptop}</p> : null}
+                        {selectedRequest.phone ? <p>Phone: {selectedRequest.phone}</p> : null}
+                        {selectedRequest.sim ? <p>SIM: {selectedRequest.sim}</p> : null}
+                        {!selectedRequest.email &&
+                        !selectedRequest.laptop &&
+                        !selectedRequest.phone &&
+                        !selectedRequest.sim ? (
+                          <p>Pending admin update</p>
+                        ) : null}
+                      </div>
                     </div>
                     <div>
-                      <p className="text-sm text-slate-500">Laptop Allocation</p>
-                      <p className="mt-2 text-slate-950">
-                        {selectedRequest.laptop_allocation || "Pending admin update"}
+                      <p className="text-sm text-slate-500">
+                        {selectedRequest.query_type === "exit_employee" ? "DOE" : "DOJ"}
                       </p>
+                      <p className="mt-2 text-slate-950">{selectedRequest.doe}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-slate-500">Last Updated</p>
+                      <p className="mt-2 text-slate-950">
+                        {format(new Date(selectedRequest.updated_at), "dd MMM yyyy, p")}
+                      </p>
+                    </div>
                     </div>
                   </CardContent>
                 </Card>
